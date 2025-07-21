@@ -1,22 +1,28 @@
 
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "../config/axios.js";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  function handleSubmit(e) {
     e.preventDefault();
-    if (!email || !password) {
-      setError("Please enter both email and password.");
-      return;
-    }
     setError("");
-    // TODO: Add login logic here
-    alert(`Logged in as ${email}`);
-  };
+    axios
+      .post("/users/login", { email, password })
+      .then((res) => {
+        navigate("/");
+      })
+      .catch((err) => {
+        setError(
+          err.response?.data?.message || "Login failed. Please try again."
+        );
+      });
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-300">
@@ -56,10 +62,11 @@ const Login = () => {
             required
           />
         </div>
-        <div>
-            <p>
-                Don't have an account? <Link to="/register" className="text-blue-600 hover:underline">Create one</Link>
-            </p>
+        <div className="mb-4">
+          <p className="text-center text-sm">
+            Don't have an account?{' '}
+            <Link to="/register" className="text-blue-600 hover:underline">Create one</Link>
+          </p>
         </div>
         <button
           type="submit"

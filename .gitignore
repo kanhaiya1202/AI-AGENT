@@ -27,3 +27,4 @@ frontend/vite.config.js
 *.sln
 *.sw?
 frontend/package.json
+frontend/.env

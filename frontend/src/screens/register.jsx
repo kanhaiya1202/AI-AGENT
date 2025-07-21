@@ -1,21 +1,25 @@
 
 import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "../config/axios.js";
 
 const Register = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!name || !email || !password) {
-      setError("Please fill in all fields.");
-      return;
-    }
-    setError("");
-    // TODO: Add register logic here
-    alert(`Registered as ${name} (${email})`);
+    axios.post('/users/register', { name, email, password })
+      .then((res) => {
+        console.log(res.data);
+        navigate('/');
+      })
+      .catch((err) => {
+        console.error(err);
+      });
   };
 
   return (
@@ -70,10 +74,14 @@ const Register = () => {
             required
           />
         </div>
+        <div>
+          <p>
+            Already have an account? <a href="/login" className="text-blue-600 hover:underline">Login here</a>
+          </p>
+        </div>
         <button
           type="submit"
-          className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition duration-200"
-        >
+          className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition duration-200">
           Register
         </button>
       </form>

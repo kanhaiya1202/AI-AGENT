@@ -8,13 +8,13 @@ const router = Router();
 router.post("/register",
     body('email').isEmail().withMessage("Email must be a valid email"),
     body('password').isLength({ min: 6 }).withMessage("Password must be at least 6 character long"),
+    body('name').isLength({min:4}).withMessage("Enter the name 4 character"),
 
     userController.CreateUserController)
 
 router.post("/login",
     body('email').isEmail().withMessage("Email must be a valid email"),
     body('password').isLength({ min: 6 }).withMessage("Password must be at least 6 character long"),
-
     userController.loginController)
 
 router.get('/profile', 
