@@ -23,5 +23,5 @@ router.get('/profile',
 
 router.get('/logOut',
     authMiddleware.authUser,
-    userController.logoutCOntroller)
+    userController.logoutController)
 export default router

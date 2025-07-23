@@ -1,7 +1,11 @@
-function Home(){
+import React,{ useContext } from "react";
+import { UserContext } from "../context/user.context";
+
+const Home = () =>{
+    const {user} =useContext(UserContext)
     return(
         <div>
-            <h1 className="text-2xl font-bold mb-4">Welcome to the Home Page</h1>
+            {user}
         </div>
     )
 }

@@ -1,10 +1,15 @@
 import AppRoutes from "./routes/AppRoutes"
 import Login from "./screens/Login"
+import { UserProvider } from "./context/user.context.jsx";
 
-function App(){
-  return(
+
+function App() {
+  return (
     <>
-    <AppRoutes></AppRoutes>
+      < UserProvider>
+        <AppRoutes></AppRoutes>
+      </ UserProvider>
+
     </>
   )
 }
