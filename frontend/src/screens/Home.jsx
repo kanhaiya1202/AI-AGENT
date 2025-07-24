@@ -5,7 +5,7 @@ const Home = () =>{
     const {user} =useContext(UserContext)
     return(
         <div>
-            {user}
+            {JSON.stringify(user)}
         </div>
     )
 }
