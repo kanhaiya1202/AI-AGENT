@@ -29,4 +29,12 @@ npm i margaon
 # 6. Create .env file and add required environment variables
 
 # 7. package.json file change type:"modeule", main:"server.js"
+# 8. i am use remix.com for icon 
+Using SVG on the web is as simple as JPEG or PNG. Such as:
+
+#Note: If you'd like to use Remix Icon with a CDN, you can skip this installation step.
+
+npm install remixicon --save
+
+
 
