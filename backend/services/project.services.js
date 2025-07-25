@@ -1,3 +1,4 @@
+
 import ProjectModel from "../model/project.model.js";
 
 export const createProject = async ({
@@ -24,4 +25,15 @@ export const createProject = async ({
         throw error;
     }
     return project
+}
+
+export const getAllProjectByUserId = async ({useId}) =>{
+    if(!useId){
+       throw new Error('UserId is required')
+    }
+
+    const allUserProject = await ProjectModel.find({
+        users:useId
+    })
+    return allUserProject
 }

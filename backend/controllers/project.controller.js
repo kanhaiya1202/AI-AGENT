@@ -1,3 +1,4 @@
+import Project from "../model/project.model.js";
 import ProjectModel from "../model/project.model.js";
 import userModel from "../model/user.model.js";
 import * as projectService from '../services/project.services.js'
@@ -21,4 +22,22 @@ export const createProject = async (req, res) => {
         res.status(400).send(err.message)
     }
 
+}
+
+export const getallProject = async( req, res) =>{
+    try {
+        const loggedInUser = await userModel.findOne({
+            email : req.user.email
+        })
+         
+        const allUserProject = await projectService.getAllProjectByUserId({
+            useId:loggedInUser._id
+        })
+        return res.status(200).json({
+            Projects:allUserProject
+        })
+    } catch (err) {
+        console.log(err)
+        res.status(400).json({error: err.message})
+    }
 }
