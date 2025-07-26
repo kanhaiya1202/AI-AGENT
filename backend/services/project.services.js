@@ -3,20 +3,20 @@ import ProjectModel from "../model/project.model.js";
 
 
 export const createProject = async ({
-    name, useId
+    name, userId
     
 }) =>{
     if(!name){
         throw new Error('Name is required')
     }
-    if(!useId){
+    if(!userId){
         throw new Error('UserId is required')
     }
 
     try {
         const project = await ProjectModel.create({
             name,
-            users: [useId]
+            users: [userId]
         });
         return project;
     } catch (error) {
@@ -28,19 +28,19 @@ export const createProject = async ({
     return project
 }
 
-export const getAllProjectByUserId = async ({useId}) =>{
-    if(!useId){
+export const getAllProjectByUserId = async ({userId}) =>{
+    if(!userId){
        throw new Error('UserId is required')
     }
 
     const allUserProject = await ProjectModel.find({
-        users:useId
+        users:userId
     })
     return allUserProject
 }
 
 
-export const addUsersToProject = async ({ projectId, users, useId }) => {
+export const addUsersToProject = async ({ projectId, users, userId }) => {
 
     if (!projectId) {
         throw new Error("projectId is required")
@@ -54,25 +54,23 @@ export const addUsersToProject = async ({ projectId, users, useId }) => {
         throw new Error("users are required")
     }
 
-    if (!Array.isArray(users) || users.some(useId => !mongoose.Types.ObjectId.isValid(useId))) {
+    if (!Array.isArray(users) || users.some(userId => !mongoose.Types.ObjectId.isValid(userId))) {
         throw new Error("Invalid userId(s) in users array")
     }
 
-    if (!useId) {
+    if (!userId) {
         throw new Error("userId is required")
     }
 
-    if (!mongoose.Types.ObjectId.isValid(useId)) {
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
         throw new Error("Invalid userId")
     }
 
-    console.log(useId)
+    
     const project = await ProjectModel.findOne({
         _id: projectId,
-        users: useId
+        users: userId
     })
-
-    console.log(project)
 
     if (!project) {
         throw new Error("User not belong to this project")

@@ -1,5 +1,3 @@
-import { useId, useState } from "react";
-import Project from "../model/project.model.js";
 import ProjectModel from "../model/project.model.js";
 import userModel from "../model/user.model.js";
 import * as projectService from '../services/project.services.js'
@@ -32,7 +30,7 @@ export const getallProject = async( req, res) =>{
         })
          
         const allUserProject = await projectService.getAllProjectByUserId({
-            useId:loggedInUser._id
+            userId:loggedInUser._id
         })
         return res.status(200).json({
             Projects:allUserProject
@@ -62,7 +60,7 @@ export const addUserToProject = async (req, res) => {
         const project = await projectService.addUsersToProject({
             projectId,
             users,
-            useId: loggedInUser._id
+            userId: loggedInUser._id
         })
 
         return res.status(200).json({
