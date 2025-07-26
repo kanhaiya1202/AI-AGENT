@@ -15,8 +15,7 @@ const Login = () => {
   function handleSubmit(e) {
     e.preventDefault();
     setError("");
-    axios
-      .post("/users/login", { email, password })
+    axios.post("/users/login", { email, password })
       .then((res) => {
         localStorage.setItem("token",res.data.token)
         setUser(res.data.user);

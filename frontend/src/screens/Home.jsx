@@ -1,36 +1,65 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { UserContext } from "../context/user.context";
+import { useNavigate } from "react-router-dom";
 import axios from "../config/axios";
 
 const Home = () => {
     const { user } = useContext(UserContext)
-    const [model , setmodel] = useState(false)
-    const [projectName , setProjectName] = useState(' ')
+    const [model, setmodel] = useState(false)
+    const [projectName, setProjectName] = useState('')
+    const [project, setproject] = useState([])
+    const navigate = useNavigate()
 
-    function createProject(e){
-        e.preventDefault() 
-         console.log({projectName })
-        
-        axios.post('/Project/create',{
-            name:projectName,
-        }).then((res) =>{
+    function createProject(e) {
+        e.preventDefault()
+        console.log({ projectName })
+
+        axios.post('/Project/create', {
+            name: projectName,
+        }).then((res) => {
+           
             console.log(res);
             setmodel(false)
-        }).catch((error) =>{
+        }).catch((error) => {
             console.log(error)
-            
+
         })
 
     }
+
+    useEffect(() => {
+            axios.get("Project/all").then((res) => {
+            console.log(res.data)
+            setproject(res.data.Projects)
+    
+        }).catch(err => {
+            console.log(err)
+        })
+    }, [])
+
     return (
-        <main className="p-4 h-screen bg-gradient-to-br from-blue-100 to-blue-300 flex">
-            <div className="project mb-6">
+        <main className="p-3 h-screen bg-blue-50 ">
+            <div className="project flex flex-wrap gap-3 ">
                 <button
                     onClick={() => setmodel(true)}
-                    className="p-4 border border-blue-600 hover:bg-blue-700 hover:text-white rounded-md transition"
+                    className="p-4 border border-blue-600 hover:bg-blue-700 hover:text-white text-blue-900 rounded-md transition"
                 >
-                    <div className="text-l ">New Project<i className="ri-link ml-2"></i></div>
+                    <div className="text-xl font-bold ">New Project<i className="ri-link ml-2"></i></div>
                 </button>
+                {
+                    project.map((project)=>(
+                        <div onClick={()=>{navigate(`/Project`,{
+                            state:{project}
+                        })}} key={project._id} className="project p-4 flex flex-col gap-2 cursor-pointer border  border-blue-600 rounded-md min-w-52 hover:bg-white  text-blue-900 font-bold ">
+                            {project.name}
+                            <div className="flex gap-2 text-blue-900 font-bold text-l ">
+                                <p><small><i className=" ri-user-line"></i> Collaborators: </small>{project.users.length}</p>
+                            </div>
+                        </div>
+                        
+                    ))
+                }
+            
             </div>
 
             {model && (
@@ -41,15 +70,15 @@ const Home = () => {
                             onSubmit={createProject}
                         >
                             <label className="block mb-2 text-blue-700 font-medium">Project Name</label>
-                                
-                                <input
-                                    onChange={(e) => setProjectName(e.target.value)}
-                                    value={projectName} 
-                                    type="text"
-                                    className="mt-1 block w-full border border-blue-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-blue-900"
-                                    required
-                                />
-                        
+
+                            <input
+                                onChange={(e) => setProjectName(e.target.value)}
+                                value={projectName}
+                                type="text"
+                                className="mt-1 block w-full border border-blue-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-blue-900"
+                                required
+                            />
+
                             <div className="flex justify-end mt-6 space-x-2">
                                 <button
                                     type="button"
