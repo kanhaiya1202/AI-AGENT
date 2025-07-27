@@ -1,22 +1,130 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { useNavigation, useLocation } from "react-router-dom"
+import axios from "../config/axios";
 
 const Project = () => {
   const location = useLocation();
-  const [sidepanelOpen, setsidepanelOpen] = useState(false)
+  const [sidepanelOpen, setsidepanelOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState([]);
+
+  // Example user list (replace with API data as needed)
+  const [users, setUsers] = useState([])
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+     setSelectedUserId(prevSelectedUserId => {
+      const newSelectedUserId = new Set(prevSelectedUserId);
+      if (newSelectedUserId.has(id)) {
+        newSelectedUserId.delete(id);
+      } else {
+        newSelectedUserId.add(id);
+      }
+
+      return newSelectedUserId;
+    });
+    // Add your message sending logic here
+  };
+
+     function addCollaborators() {
+
+        axios.put("/Project/add-user", {
+            projectId: location.state.project._id,
+            users: Array.from(selectedUserId)
+        }).then(res => {
+            console.log(res.data)
+            setModalOpen(false)
+
+        }).catch(err => {
+            console.log(err)
+        })
+
+    }
+
+
+  useEffect(() => {
+    axios.get('/users/all').then(res => {
+      setUsers(res.data.users)
+    }).catch(err => {
+      console.log(err => {
+        console.log(err)
+      })
+      // return res.status(400).json({error:err.message})
+    })
+  }, [])
 
   return (
     <main className="h-screen w-screen flex bg-gradient-to-br from-indigo-100 via-blue-200 to-blue-400 transition-colors duration-700">
 
-      <section className="left relative min-w-72 bg-white/80 border-r border-indigo-200 flex flex-col shadow-xl animate-fadeIn">
+      <section className="left relative min-w-80 bg-white/80 border-r border-indigo-200 flex flex-col shadow-xl animate-fadeIn">
         <header className="flex items-center justify-between w-full p-4 bg-white/90 border-b border-indigo-100">
+          {/* add user button */}
+          <button
+            className="p-2 cursor-pointer rounded hover:bg-indigo-100 transition-colors duration-200"
+            onClick={() => setModalOpen(true)}
+          >
+            <i className="text-indigo-700 text-lg font-bold ri-add-large-line"></i>
+          </button>
+
+          {/* User Selection Modal */}
+
+          {modalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+              <div className="bg-white rounded-xl shadow-lg w-full max-w-md mx-2 p-6 animate-fadeIn flex flex-col relative">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-bold text-indigo-700">Select Users</h3>
+                  <button
+                    onClick={() => setModalOpen(false)}
+                    className=" cursor-pointer text-indigo-700 hover:text-indigo-900 text-2xl font-bold px-2"
+                    aria-label="Close Modal"
+                  >
+                    &times;
+                  </button>
+                </div>
+                <ul className="divide-y divide-indigo-100 max-h-60 overflow-y-auto mb-4">
+                  {users.map((user) => (
+                    <li
+                      key={user._id}
+                      className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-indigo-50 transition rounded ${selectedUserId.includes(user._id) ? 'bg-indigo-100' : ''}`}
+                      onClick={() => {
+                        setSelectedUserId(prev => {
+                          if (prev.includes(user._id)) {
+                            // If already selected, remove from array
+                            return prev.filter(id => id !== user._id);
+                          } else {
+                            // If not selected, add to array
+                            return [...prev, user._id];
+                          }
+                        });
+                      }}
+                    >
+                      <span className="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-700 font-bold">
+                        {user.name[0]}
+                      </span>
+                      <span className="text-indigo-900 font-medium">{user.name}</span>
+                      {selectedUserId.includes(user._id) && (
+                        <span className="ml-auto text-indigo-600 font-bold">Selected</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  className="w-full mt-auto py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-colors duration-200"
+                  onClick={addCollaborators}
+                  disabled={selectedUserId.length === 0}
+                >
+                  Add Collaborator
+                </button>
+              </div>
+            </div>
+          )}
           <span className="text-lg font-bold text-indigo-700 tracking-wide animate-slideDown">Project Chat</span>
           <button
             onClick={() => setsidepanelOpen(!sidepanelOpen)}
-            className="p-2 rounded hover:bg-indigo-100 transition-colors duration-200"
+            className="p-2 cursor-pointer rounded hover:bg-indigo-100 transition-colors duration-200"
             aria-label="Open Side Panel"
           >
-            <i className="ri-group-line text-xl text-indigo-600"></i>
+            <i className="ri-group-line text-xl text-indigo-700"></i>
           </button>
         </header>
 
@@ -32,7 +140,7 @@ const Project = () => {
             </div>
           </div>
 
-          <form className="inputField flex gap-2 bg-white/90 rounded-lg shadow p-2 animate-slideUp">
+          <form className="inputField flex gap-2 bg-white/90 rounded-lg shadow p-2 animate-slideUp" onSubmit={handleSubmit}>
             <input
               className="flex-1 p-2 px-4 border-none outline-none rounded-md text-indigo-900 bg-transparent"
               type="text"
@@ -40,7 +148,7 @@ const Project = () => {
             />
             <button
               type="submit"
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-semibold transition-colors duration-200"
+              className="px-4 py-2 cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-semibold transition-colors "
             >
               <i className="ri-send-plane-fill"></i>
             </button>
@@ -51,20 +159,21 @@ const Project = () => {
           <header className="flex justify-end p-2 px-3">
             <button
               onClick={() => setsidepanelOpen(!sidepanelOpen)}
-              className="p-2"
+              className="p-2 cursor-pointer"
               aria-label="Close Side Panel"
             >
               <i className="ri-close-line text-xl text-indigo-700"></i>
             </button>
           </header>
-          <div className="p-4 text-indigo-900 font-semibold">
-            <h1>Project Members</h1>
-            <ul className="mt-2 space-y-1">
-              <li>- Alice</li>
+          <div className="p-4 text-indigo-900 font-semibold ">
+            <span className="text-lg font-bold text-indigo-700 tracking-wide animate-slideDown">Project Members</span>
+            <ul className="mt-2 cursor-pointer space-y-1 flex align-middle items-baseline-last gap-3">
+              <i className="ri-user-line"></i><li className="text-xl">username</li>
             </ul>
           </div>
         </div>
       </section>
+
 
       {/* Animations (Tailwind CSS custom classes) */}
       <style>
