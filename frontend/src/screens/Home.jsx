@@ -38,7 +38,7 @@ const Home = () => {
     }, [])
 
     return (
-        <main className="p-3 h-screen bg-blue-50 ">
+        <main className="p-3 h-screen bg-gradient-to-br from-indigo-100 via-blue-200 to-blue-400 ">
             <div className="project flex flex-wrap gap-3 ">
                 <button
                     onClick={() => setmodel(true)}
