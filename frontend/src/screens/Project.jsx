@@ -7,13 +7,14 @@ const Project = () => {
   const [sidepanelOpen, setsidepanelOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState([]);
+  const [project, setProject] = useState(location.state.project)
 
   // Example user list (replace with API data as needed)
   const [users, setUsers] = useState([])
 
   const handleSubmit = (e) => {
     e.preventDefault();
-     setSelectedUserId(prevSelectedUserId => {
+    setSelectedUserId(prevSelectedUserId => {
       const newSelectedUserId = new Set(prevSelectedUserId);
       if (newSelectedUserId.has(id)) {
         newSelectedUserId.delete(id);
@@ -26,23 +27,28 @@ const Project = () => {
     // Add your message sending logic here
   };
 
-     function addCollaborators() {
+  function addCollaborators() {
+    axios.put("/Project/add-user", {
+      projectId: location.state.project._id,
+      users: Array.from(selectedUserId)
+    }).then(res => {
+      console.log(res.data)
+      setModalOpen(false)
 
-        axios.put("/Project/add-user", {
-            projectId: location.state.project._id,
-            users: Array.from(selectedUserId)
-        }).then(res => {
-            console.log(res.data)
-            setModalOpen(false)
+    }).catch(err => {
+      console.log(err)
+    })
 
-        }).catch(err => {
-            console.log(err)
-        })
-
-    }
+  }
 
 
   useEffect(() => {
+    axios.get(`/Project/get-project/${location.state.project._id}`).then(res => {
+      setProject(res.data.project)
+    }).catch(err => {
+      console.log(err)
+    })
+
     axios.get('/users/all').then(res => {
       setUsers(res.data.users)
     }).catch(err => {
@@ -166,10 +172,18 @@ const Project = () => {
             </button>
           </header>
           <div className="p-4 text-indigo-900 font-semibold ">
-            <span className="text-lg font-bold text-indigo-700 tracking-wide animate-slideDown">Project Members</span>
-            <ul className="mt-2 cursor-pointer space-y-1 flex align-middle items-baseline-last gap-3">
-              <i className="ri-user-line"></i><li className="text-xl">username</li>
-            </ul>
+            <span className="text-lg font-bold text-indigo-700 tracking-wide animate-slideDown">Project User Collaborators</span>
+
+            {project.users && project.users.map((user, index) => {
+              return (
+                <div key={index}>  
+                  <ul className="mt-2 cursor-pointer space-y-1 flex items-baseline-last gap-3 text-blue-900">
+                    <i className="ri-user-line"></i>
+                    <li className="text-xl">{user.name}</li>
+                  </ul>
+                </div>
+              )
+            })}
           </div>
         </div>
       </section>
