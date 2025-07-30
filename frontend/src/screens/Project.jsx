@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useContext } from "react"
 import { useNavigation, useLocation } from "react-router-dom"
 import axios from "../config/axios";
-import { initializeSocket } from "../config/socket";
+import { initializeSocket, receiveMessage, sendMessage } from "../config/socket";
+import { UserContext } from "../context/user.context";
 
 const Project = () => {
   const location = useLocation();
   const [sidepanelOpen, setsidepanelOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState([]);
-  const [project, setProject] = useState(location.state.project)
+  const [project, setProject] = useState(location.state.Project)
+  const [message, setMessage] = useState('')
+  const { user } = useContext(UserContext)
 
   // Example user list (replace with API data as needed)
   const [users, setUsers] = useState([])
@@ -42,9 +45,20 @@ const Project = () => {
 
   }
 
+  function send(e) {
+    sendMessage('project-message', {
+      message,
+      sender: users._id
+    })
+    setMessage("")
+  }
 
   useEffect(() => {
-    initializeSocket()
+    initializeSocket(Project._id)
+
+    receiveMessage('project-message', data => {
+      console.log(data)
+    })
     axios.get(`/Project/get-project/${location.state.project._id}`).then(res => {
       setProject(res.data.project)
     }).catch(err => {
@@ -150,11 +164,14 @@ const Project = () => {
 
           <form className="inputField flex gap-2 bg-white/90 rounded-lg shadow p-2 animate-slideUp" onSubmit={handleSubmit}>
             <input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
               className="flex-1 p-2 px-4 border-none outline-none rounded-md text-indigo-900 bg-transparent"
               type="text"
               placeholder="Enter Message"
             />
             <button
+              onClick={send}
               type="submit"
               className="px-4 py-2 cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-semibold transition-colors "
             >
@@ -176,16 +193,14 @@ const Project = () => {
           <div className="p-4 text-indigo-900 font-semibold ">
             <span className="text-lg font-bold text-indigo-700 tracking-wide animate-slideDown">Project User Collaborators</span>
 
-            {project.users && project.users.map((user, index) => {
-              return (
-                <div key={index}>  
-                  <ul className="mt-2 cursor-pointer space-y-1 flex items-baseline-last gap-3 text-blue-900">
-                    <i className="ri-user-line"></i>
-                    <li className="text-xl">{user.name}</li>
-                  </ul>
-                </div>
-              )
-            })}
+            {project && project.users && project.users.map((user, index) => (
+              <div key={user._id || index}>
+                <ul className="mt-2 cursor-pointer space-y-1 flex items-baseline-last gap-3 text-blue-900">
+                  <i className="ri-user-line"></i>
+                  <li className="text-xl">{user.name}</li>
+                </ul>
+              </div>
+            ))}
           </div>
         </div>
       </section>
