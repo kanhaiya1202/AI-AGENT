@@ -7,57 +7,81 @@ import cors from 'cors'
 import mongoose from 'mongoose';
 import ProjectModel from './model/project.model.js'
 
-
 const server = http.createServer(app);
-const io = new Server(server,{
-  cors:{
-    origin:'*'
+const io = new Server(server, {
+  cors: {
+    origin: ["http://localhost:5173", "http://localhost:3000"], // Add your frontend URLs
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
-
-
-io.use(async(socket,next)=>{
-
+io.use(async (socket, next) => {
   try {
     const token = socket.handshake.auth?.token || socket.handshake.headers.authorization?.split(' ')[1];
     const projectId = socket.handshake.query.projectId
 
-    if(!mongoose.Types.ObjectId.isValid(projectId)){
-       return next(new Error("ProjectId Error"))
-     }
+    console.log('Socket connection attempt:', { projectId, hasToken: !!token });
 
-    socket.Project = await ProjectModel.findById(projectId)
-
-    if(!token){
-      return next(new Error("authorization error"));
+    if (!projectId) {
+      return next(new Error("ProjectId is required"))
     }
+
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      return next(new Error("Invalid ProjectId"))
+    }
+
+    if (!token) {
+      return next(new Error("Authorization token is required"));
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if(!decoded){
-      return next(new Error("authorization error"))
+    if (!decoded) {
+      return next(new Error("Invalid authorization token"))
     }
 
+    const project = await ProjectModel.findById(projectId)
+    if (!project) {
+      return next(new Error("Project not found"))
+    }
+
+    socket.project = project; // Fixed: consistent lowercase
     socket.user = decoded
 
     next();
   } catch (error) {
+    console.error('Socket authentication error:', error);
     next(error)
   }
 })
 
 io.on('connection', socket => {
-  console.log('user connected')
-  socket.join(socket.Project._id)
+  console.log('User connected:', socket.user.email, 'to project:', socket.project.name)
+  
+  // Join the project room
+  socket.join(socket.project._id.toString())
 
-  socket.on('project-message', data =>{
-    console.log(data)
-    socket.broadcast.to(socket.project._id).emit('project-message',data)
+  socket.on('project-message', data => {
+    console.log('Message received:', data)
+    // Broadcast to all users in the project room except sender
+    socket.broadcast.to(socket.project._id.toString()).emit('project-message', {
+      ...data,
+      timestamp: new Date(),
+      senderEmail: socket.user.email
+    })
   })
-  socket.on('event', data => { /* … */ });
-  socket.on('disconnect', () => { /* … */ });
+
+  socket.on('disconnect', (reason) => {
+    console.log('User disconnected:', socket.user?.email, 'Reason:', reason);
+  });
+
+  socket.on('error', (error) => {
+    console.error('Socket error:', error);
+  });
 });
+
 const port = process.env.PORT || 3000
 
 server.listen(port, () => {
-    console.log(`server start${port}`)
+    console.log(`Server running on port ${port}`)
 })
