@@ -9,14 +9,14 @@ const Project = () => {
   const [sidepanelOpen, setsidepanelOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState([]);
-  const [project, setProject] = useState(location.state.Project)
+  const [project, setProject] = useState(location.state.project)
   const [message, setMessage] = useState('')
   const { user } = useContext(UserContext)
 
   // Example user list (replace with API data as needed)
   const [users, setUsers] = useState([])
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (id) => {
     e.preventDefault();
     setSelectedUserId(prevSelectedUserId => {
       const newSelectedUserId = new Set(prevSelectedUserId);
@@ -45,35 +45,33 @@ const Project = () => {
 
   }
 
-  function send(e) {
+  const send = () => {
+    if (!project || !project._id) return;
     sendMessage('project-message', {
       message,
       sender: users._id
-    })
-    setMessage("")
+    });
+    setMessage("");
   }
 
   useEffect(() => {
-    initializeSocket(Project._id)
-
+    if (!project || !project._id) return;
+    initializeSocket(project._id);
     receiveMessage('project-message', data => {
       console.log(data)
-    })
-    axios.get(`/Project/get-project/${location.state.project._id}`).then(res => {
+    });
+    axios.get(`/Project/get-project/${project._id}`).then(res => {
       setProject(res.data.project)
     }).catch(err => {
       console.log(err)
-    })
-
+    });
     axios.get('/users/all').then(res => {
       setUsers(res.data.users)
     }).catch(err => {
-      console.log(err => {
-        console.log(err)
-      })
-      // return res.status(400).json({error:err.message})
-    })
-  }, [])
+      console.log(err);
+    });
+    // eslint-disable-next-line
+  }, [project && project._id]);
 
   return (
     <main className="h-screen w-screen flex bg-gradient-to-br from-indigo-100 via-blue-200 to-blue-400 transition-colors duration-700">
@@ -162,7 +160,7 @@ const Project = () => {
             </div>
           </div>
 
-          <form className="inputField flex gap-2 bg-white/90 rounded-lg shadow p-2 animate-slideUp" onSubmit={handleSubmit}>
+          <div className="inputField flex gap-2 bg-white/90 rounded-lg shadow p-2 animate-slideUp" onSubmit={handleSubmit}>
             <input
               value={message}
               onChange={(e) => setMessage(e.target.value)}
@@ -177,7 +175,7 @@ const Project = () => {
             >
               <i className="ri-send-plane-fill"></i>
             </button>
-          </form>
+          </div>
         </div>
 
         <div className={`slidePanel w-full h-full transition-transform duration-500 ${sidepanelOpen ? 'translate-x-0' : '-translate-x-full'} bg-blue-50/90 absolute top-0 right-0 shadow-lg z-20 animate-slideIn`}>
