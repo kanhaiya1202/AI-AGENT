@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 import axios from "../config/axios";
 import { initializeSocket, receiveMessage, sendMessage, disconnectSocket } from "../config/socket";
 import { UserContext } from "../context/user.context";
+import { createElement } from "react";
 
 const Project = () => {
   const location = useLocation();
@@ -15,6 +16,7 @@ const Project = () => {
   const [messages, setMessages] = useState([])
   const [socketConnected, setSocketConnected] = useState(false);
   const { user } = useContext(UserContext)
+  const messageBox = React.createRef()
 
   const [users, setUsers] = useState([])
 
@@ -103,6 +105,17 @@ const Project = () => {
       disconnectSocket();
     };
   }, [project?._id, navigate, user]);
+
+  
+  function scrollToBottom() {
+    if (messageBox.current) {
+      messageBox.current.scrollTop = messageBox.current.scrollHeight;
+    }
+  }
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   if (!project) {
     return (
@@ -202,7 +215,9 @@ const Project = () => {
         </header>
 
         <div className="conversation min-h-9 flex-grow flex flex-col">
-          <div style={{scrollbarWidth: 'none'}}  className=" px-4 py-2 message-box flex-grow flex bg-indigo-100/70 flex-col gap-2 overflow-y-auto  transition-all duration-500"> 
+          <div
+            ref={messageBox}
+           style={{scrollbarWidth: 'none'}}  className=" px-4 py-2 message-box flex-grow flex bg-indigo-100/70 flex-col gap-2 overflow-y-auto  transition-all duration-500"> 
             {messages.length === 0 ? (
               <div className="text-center text-indigo-600 py-8">
                 <p>No messages yet. Start the conversation!</p>

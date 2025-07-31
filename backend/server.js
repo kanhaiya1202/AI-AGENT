@@ -73,6 +73,7 @@ io.on('connection', socket => {
 
   socket.on('disconnect', (reason) => {
     console.log('User disconnected:', socket.user?.email, 'Reason:', reason);
+    socket.leave(socket.project._id.toString())
   });
 
   socket.on('error', (error) => {
