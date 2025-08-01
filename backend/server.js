@@ -57,12 +57,13 @@ io.use(async (socket, next) => {
 
 io.on('connection', socket => {
   console.log('User connected:', socket.user.email, 'to project:', socket.project.name)
-  
+  console.log("socket is connected")
   // Join the project room
   socket.join(socket.project._id.toString())
 
   socket.on('project-message', data => {
     console.log('Message received:', data)
+  
     // Broadcast to all users in the project room except sender
     socket.broadcast.to(socket.project._id.toString()).emit('project-message', {
       ...data,
