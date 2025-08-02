@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 const LandingPage = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white overflow-hidden relative">
+    <div  style={{ scrollbarWidth: 'none' }}  className=" min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white overflow-hidden relative">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
@@ -42,11 +42,11 @@ const LandingPage = () => {
               Collaborate
             </span>
             <br />
-            <span className="text-white">In Real-Time</span>
+            <span className="text-white">In Real-Time With AI</span>
           </h1>
           
           <p className="text-xl lg:text-2xl mb-8 text-gray-300 max-w-2xl mx-auto leading-relaxed">
-            Create projects, invite team members, and collaborate seamlessly with real-time messaging and project management.
+            Create projects, invite team members, and collaborate seamlessly with real-time with AI messaging and project management.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
@@ -65,13 +65,17 @@ const LandingPage = () => {
           </div>
 
           {/* Feature Cards */}
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-6 max-w-4xl mx-auto">
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
               <div className="text-3xl mb-4">🚀</div>
               <h3 className="text-xl font-semibold mb-2">Real-Time Chat</h3>
               <p className="text-gray-300">Communicate instantly with your team members in project-specific chat rooms.</p>
             </div>
-            
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
+              <div className="text-3xl mb-4">🤖</div>
+              <h3 className="text-xl font-semibold mb-2">AI Assistants</h3>
+              <p className="text-gray-300">Real-time chat with team and AI in project rooms for seamless collaboration.</p>
+            </div>
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300">
               <div className="text-3xl mb-4">👥</div>
               <h3 className="text-xl font-semibold mb-2">Team Management</h3>
