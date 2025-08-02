@@ -26,4 +26,11 @@ router.put('/add-user', authMiddleWare.authUser,
 router.get("/get-project/:projectId",authMiddleWare.authUser,
     ProjectController.getProjectById
 )
+
+router.put('/update-file-tree',
+    authMiddleWare.authUser,
+    body('projectId').isString().withMessage('Project ID is required'),
+    body('fileTree').isObject().withMessage('File tree is required'),
+    ProjectController.updateFileTree
+)
 export default router 

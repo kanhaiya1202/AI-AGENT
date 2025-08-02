@@ -11,9 +11,9 @@ import { generateResult } from './services/ai.services.js';
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173", "http://localhost:3000"], // Add your frontend URLs
-    methods: ["GET", "POST"],
-    credentials: true
+    origin:"*", // Add your frontend URLs
+    // methods: ["GET", "POST"],
+    // credentials: true
   }
 });
 
@@ -77,8 +77,9 @@ io.on('connection', socket => {
         message: result,
         timestamp: new Date(),
        
-        user: {
-          _id: 'ai'
+          sender: {
+          _id: 'ai',
+          email:"AI"
         }
       })
       return
