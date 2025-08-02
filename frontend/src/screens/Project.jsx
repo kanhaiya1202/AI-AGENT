@@ -7,15 +7,12 @@ import { createElement } from "react";
 import Markdown from 'markdown-to-jsx'
 import { getWebContainer } from "../config/webcontainer";
 
-
 function SyntaxHighlightedCode(props) {
   const ref = useRef(null)
 
   React.useEffect(() => {
     if (ref.current && props.className?.includes('lang-') && window.hljs) {
       window.hljs.highlightElement(ref.current)
-
-      // hljs won't reprocess the element unless this attribute is removed
       ref.current.removeAttribute('data-highlighted')
     }
   }, [props.className, props.children])
@@ -34,7 +31,7 @@ const Project = () => {
   const [messages, setMessages] = useState([])
   const [socketConnected, setSocketConnected] = useState(false);
   const { user } = useContext(UserContext)
-  const messageBox = React.createRef()
+  const messageBox = useRef(null) // Fixed: use useRef instead of createRef
 
   const [users, setUsers] = useState([])
   const [fileTree, setFileTree] = useState({})
@@ -46,7 +43,6 @@ const Project = () => {
   const [iframeUrl, setIframeUrl] = useState(null)
 
   const [runProcess, setRunProcess] = useState(null)
-
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -61,22 +57,19 @@ const Project = () => {
       } else {
         newSelectedUserId.add(id);
       }
-
       return newSelectedUserId;
     });
-
-
   }
 
   function addCollaborators() {
-    axios.put("/Project/add-user", {
-      projectId: location.state.project._id,//project._id
+    axios.put("/Project/add-user", { // Fixed: consistent URL path
+      projectId: project._id,
       users: Array.from(selectedUserId)
     }).then(res => {
       console.log(res.data)
-      // setProject(res.data.project);
+      setProject(res.data.project);
       setModalOpen(false)
-      // setSelectedUserId([]);
+      setSelectedUserId(new Set()); // Fixed: reset to empty Set
     }).catch(err => {
       console.log(err)
     })
@@ -87,39 +80,38 @@ const Project = () => {
 
     const messageData = {
       message: message.trim(),
-      sender: user, //user?.email || 'Anonymous',
+      sender: user,
       timestamp: new Date()
     };
 
     // Add message to local state immediately
-    setMessages(prev => [...prev, { ...messageData }]); //, isOwn: true 
+    setMessages(prev => [...prev, { ...messageData, isOwn: true }]);
 
     // Send to other users
     sendMessage('project-message', messageData);
     setMessage("");
   }
 
-
-  //new 
   function WriteAiMessage(message) {
-
-    const messageObject = JSON.parse(message)
-
-    return (
-      <div
-        className='overflow-auto bg-slate-950 text-white rounded-sm p-2'
-      >
-        <Markdown
-          children={messageObject.text}
-          options={{
-            overrides: {
-              code: SyntaxHighlightedCode,
-            },
-          }}
-        />
-      </div>)
+    try {
+      const messageObject = JSON.parse(message)
+      return (
+        <div className='overflow-auto bg-slate-950 text-white rounded-sm p-2'>
+          <Markdown
+            children={messageObject.text}
+            options={{
+              overrides: {
+                code: SyntaxHighlightedCode,
+              },
+            }}
+          />
+        </div>
+      )
+    } catch (error) {
+      console.error('Failed to parse AI message:', error);
+      return <div className='text-red-500'>Failed to parse AI response</div>
+    }
   }
-
 
   useEffect(() => {
     if (!project || !project._id) {
@@ -127,82 +119,108 @@ const Project = () => {
       return;
     }
 
+    // Initialize WebContainer first
+    const initWebContainer = async () => {
+      try {
+        const container = await getWebContainer(); // Fixed: await the container
+        setWebContainer(container);
+        console.log("WebContainer started");
+      } catch (error) {
+        console.error("Failed to initialize WebContainer:", error);
+      }
+    };
+
+    initWebContainer();
+
     // Initialize socket connection
     const socket = initializeSocket(project._id);
 
-    socket.on('connect', () => {
+    const handleConnect = () => {
       console.log('Socket connected');
       setSocketConnected(true);
-    });
+    };
 
-    socket.on('disconnect', () => {
+    const handleDisconnect = () => {
       console.log('Socket disconnected');
       setSocketConnected(false);
-    });
+    };
 
-    socket.on('connect_error', (error) => {
+    const handleConnectError = (error) => {
       console.error('Socket connection error:', error);
       setSocketConnected(false);
-    });
+    };
 
-    if (!webContainer) {
-      const container = getWebContainer();
-      setWebContainer(container);
-      console.log("container started");
-    }
-
-
-    // Listen for incoming messages
-    receiveMessage('project-message', (data) => {
+    const handleProjectMessage = (data) => {
       console.log('Received message:', data);
+      
+      // Check if it's an AI message
       if (data.sender && data.sender._id === 'ai') {
         try {
           const message = JSON.parse(data.message);
           if (message.fileTree) {
-            webContainer?.mount(message.fileTree);
             setFileTree(message.fileTree || {});
+            // Mount to WebContainer if available
+            if (webContainer) {
+              webContainer.mount(message.fileTree);
+            }
           }
         } catch (e) {
           console.error('Failed to parse AI message:', e);
         }
       }
-      // Only add the message once
-      setMessages(prev => [...prev, data]);
-    });
+      
+      // Only add the message if it's not from the current user (avoid duplicates)
+      if (!data.isOwn) {
+        setMessages(prev => [...prev, data]);
+      }
+    };
+
+    // Set up socket event listeners
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('connect_error', handleConnectError);
+    
+    // Listen for incoming messages
+    receiveMessage('project-message', handleProjectMessage);
 
     // Fetch project details
-    axios.get(`/Project/get-project/${project._id}`).then(res => {
-
-      setProject(res.data.project)
-      setFileTree(res.data.project.fileTree || {})
-    }).catch(err => {
-      console.log(err)
-    });
+    axios.get(`/Project/get-project/${project._id}`) // Fixed: consistent URL path
+      .then(res => {
+        setProject(res.data.project)
+        setFileTree(res.data.project.fileTree || {})
+      })
+      .catch(err => {
+        console.log('Error fetching project:', err)
+      });
 
     // Fetch all users for collaboration
-    axios.get('/users/all').then(res => {
-      setUsers(res.data.users)
-    }).catch(err => {
-      console.log(err);
-    });
+    axios.get('/users/all')
+      .then(res => {
+        setUsers(res.data.users)
+      })
+      .catch(err => {
+        console.log('Error fetching users:', err);
+      });
 
     // Cleanup on unmount
     return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('connect_error', handleConnectError);
       disconnectSocket();
     };
-  }, [project?._id, navigate, user]);
+  }, [project?._id, navigate]);
 
   function saveFileTree(ft) {
-    axios.put('/projects/update-file-tree', {
+    axios.put('/Project/update-file-tree', {
       projectId: project._id,
       fileTree: ft
     }).then(res => {
-      console.log(res.data)
+      console.log('File tree saved:', res.data)
     }).catch(err => {
-      console.log(err)
+      console.log('Error saving file tree:', err)
     })
   }
-
 
   function scrollToBottom() {
     if (messageBox.current) {
@@ -213,6 +231,58 @@ const Project = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Run WebContainer commands
+  const runProject = async () => {
+    if (!webContainer) {
+      console.error("WebContainer is not initialized.");
+      return;
+    }
+    if (!fileTree || typeof fileTree !== 'object' || Object.keys(fileTree).length === 0) {
+      console.error("File tree is not available or invalid.");
+      return;
+    }
+
+    try {
+      // Mount the file tree
+      await webContainer.mount(fileTree);
+
+      // Install dependencies
+      const installProcess = await webContainer.spawn("npm", ["install"]);
+      installProcess.output.pipeTo(new WritableStream({
+        write(chunk) {
+          console.log('Install:', chunk);
+        }
+      }));
+
+      // Wait for install to complete
+      await installProcess.exit;
+
+      // Kill existing process if running
+      if (runProcess) {
+        runProcess.kill();
+      }
+
+      // Start the project
+      const tempRunProcess = await webContainer.spawn("npm", ["start"]);
+      tempRunProcess.output.pipeTo(new WritableStream({
+        write(chunk) {
+          console.log('Run:', chunk);
+        }
+      }));
+
+      setRunProcess(tempRunProcess);
+
+      // Listen for server ready event
+      webContainer.on('server-ready', (port, url) => {
+        console.log('Server ready:', port, url);
+        setIframeUrl(url);
+      });
+
+    } catch (error) {
+      console.error('Error running project:', error);
+    }
+  };
 
   if (!project) {
     return (
@@ -231,8 +301,7 @@ const Project = () => {
   }
 
   return (
-    <main className="h-screen  w-screen flex bg-gradient-to-br from-indigo-100 via-blue-200 to-blue-400 transition-colors duration-700">
-
+    <main className="h-screen w-screen flex bg-gradient-to-br from-indigo-100 via-blue-200 to-blue-400 transition-colors duration-700">
       <section className="left relative min-w-80 bg-white/80 border-r border-indigo-200 flex flex-col shadow-xl animate-fadeIn">
         <header className="flex items-center justify-between w-full p-4 bg-white/90 border-b border-indigo-100">
           {/* Socket Status Indicator */}
@@ -263,25 +332,17 @@ const Project = () => {
                   </button>
                 </div>
                 <ul className="divide-y divide-indigo-100 max-h-60 overflow-y-auto mb-4">
-                  {users.map((user) => (
+                  {users.map((userItem) => (
                     <li
-                      key={user._id}
-                      className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-indigo-50 transition rounded ${selectedUserId.includes(user._id) ? 'bg-indigo-100' : ''}`}
-                      onClick={() => {
-                        setSelectedUserId(prev => {
-                          if (prev.includes(user._id)) {
-                            return prev.filter(id => id !== user._id);
-                          } else {
-                            return [...prev, user._id];
-                          }
-                        });
-                      }}
+                      key={userItem._id}
+                      className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-indigo-50 transition rounded ${selectedUserId.has(userItem._id) ? 'bg-indigo-100' : ''}`}
+                      onClick={() => handleUserClick(userItem._id)}
                     >
                       <span className="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-700 font-bold">
-                        {user.name?.[0]?.toUpperCase() || 'U'}
+                        {userItem.name?.[0]?.toUpperCase() || 'U'}
                       </span>
-                      <span className="text-indigo-900 font-medium">{user.name}</span>
-                      {selectedUserId.includes(user._id) && (
+                      <span className="text-indigo-900 font-medium">{userItem.name}</span>
+                      {selectedUserId.has(userItem._id) && (
                         <span className="ml-auto text-indigo-600 font-bold">Selected</span>
                       )}
                     </li>
@@ -290,9 +351,9 @@ const Project = () => {
                 <button
                   className="w-full mt-auto py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-colors duration-200 disabled:opacity-50"
                   onClick={addCollaborators}
-                  disabled={selectedUserId.length === 0}
+                  disabled={selectedUserId.size === 0}
                 >
-                  Add Collaborator
+                  Add Collaborators
                 </button>
               </div>
             </div>
@@ -314,30 +375,35 @@ const Project = () => {
         <div className="conversation min-h-9 flex-grow flex flex-col">
           <div
             ref={messageBox}
-            style={{ scrollbarWidth: 'none' }} className=" px-4 py-2 message-box flex-grow flex bg-indigo-100/70 flex-col gap-2 overflow-y-auto  transition-all duration-500">
+            style={{ scrollbarWidth: 'none' }} 
+            className="px-4 py-2 message-box flex-grow flex bg-indigo-100/70 flex-col gap-2 overflow-y-auto transition-all duration-500"
+          >
             {messages.length === 0 ? (
               <div className="text-center text-indigo-600 py-8">
                 <p>No messages yet. Start the conversation!</p>
               </div>
             ) : (
               messages.map((msg, index) => (
-
                 <div
                   key={index}
-
-                  className={`message max-w-60 flex flex-col p-3 rounded-lg shadow ${msg.sender && msg.sender._id === 'ai' ? 'max-w-80' : 'max-w-52'} ${(msg.sender && user && msg.sender._id && user._id && msg.sender._id.toString() === user._id.toString()) ? 'ml-auto' : ''}`}
+                  className={`message max-w-60 flex flex-col p-3 rounded-lg shadow ${
+                    msg.sender && msg.sender._id === 'ai' ? 'max-w-80 bg-gray-100' : 'max-w-52'
+                  } ${
+                    (msg.sender && user && msg.sender._id && user._id && 
+                     msg.sender._id.toString() === user._id.toString()) || msg.isOwn
+                      ? 'ml-auto bg-indigo-200' 
+                      : 'bg-white'
+                  }`}
                 >
                   <small className="opacity-80 text-xs mb-1">
-                    {msg.sender.email}
-
+                    {msg.sender?.email || 'Unknown'}
                   </small>
-                  {/* <p className="text-sm">{msg.message}</p> */}
                   <div className='text-sm'>
-                    {msg.sender._id === 'ai' ?
+                    {msg.sender?._id === 'ai' ?
                       WriteAiMessage(msg.message)
-                      : <p>{msg.message}</p>}
+                      : <p>{msg.message}</p>
+                    }
                   </div>
-
                   <small className="opacity-60 text-xs mt-1">
                     {new Date(msg.timestamp).toLocaleTimeString()}
                   </small>
@@ -346,7 +412,7 @@ const Project = () => {
             )}
           </div>
 
-          <form className="inputField flex gap-2 bg-white/90 rounded-lg shadow p-2 animate-slideUp" onSubmit={handleUserClick}>
+          <form className="inputField flex gap-2 bg-white/90 rounded-lg shadow p-2 animate-slideUp" onSubmit={handleSubmit}>
             <input
               value={message}
               onChange={(e) => setMessage(e.target.value)}
@@ -356,7 +422,6 @@ const Project = () => {
               disabled={!socketConnected}
             />
             <button
-              onClick={send}
               type="submit"
               disabled={!socketConnected || !message.trim()}
               className="px-4 py-2 cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -378,174 +443,149 @@ const Project = () => {
             </button>
           </header>
           <div className="p-4">
-            {project && project.users && project.users.map((user, index) => (
-              <div key={user._id || index} className="flex items-center gap-3 p-2 hover:bg-indigo-100 rounded">
+            {project && project.users && project.users.map((userItem, index) => (
+              <div key={userItem._id || index} className="flex items-center gap-3 p-2 hover:bg-indigo-100 rounded">
                 <span className="w-8 h-8 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-700 font-bold">
-                  {user.name?.[0]?.toUpperCase() || 'U'}
+                  {userItem.name?.[0]?.toUpperCase() || 'U'}
                 </span>
-                <span className="text-indigo-900 font-medium">{user.name}</span>
+                <span className="text-indigo-900 font-medium">{userItem.name}</span>
               </div>
             ))}
           </div>
         </div>
       </section>
-      <section className="right  bg-red-50 flex-grow h-full flex">
 
+      <section className="right bg-red-50 flex-grow h-full flex">
         <div className="explorer h-full max-w-64 min-w-52 bg-slate-200">
           <div className="file-tree w-full">
-            {
-              fileTree && typeof fileTree === 'object' && Object.keys(fileTree).length > 0 ? (
-                Object.keys(fileTree).map((file, index) => (
-                  <button
-                    key={index}
-                    onClick={() => {
-                      setCurrentFile(file);
-                      if (file && typeof file === 'string') {
-                        setOpenFiles(prev => {
-                          if (!prev.includes(file)) {
-                            return [...prev, file];
-                          }
-                          return prev;
-                        });
-                      }
-                    }}
-                    className="tree-element cursor-pointer p-2 px-4 flex items-center gap-2 bg-slate-300 w-full">
-                    <p
-                      className='font-semibold text-lg'
-                    >{file}</p>
-                  </button>
-                ))
-              ) : (
-                <div className="text-gray-500 p-4">No files found.</div>
-              )
-            }
+            {fileTree && typeof fileTree === 'object' && Object.keys(fileTree).length > 0 ? (
+              Object.keys(fileTree).map((file, index) => (
+                <button
+                  key={index}
+                  onClick={() => {
+                    setCurrentFile(file);
+                    if (file && typeof file === 'string') {
+                      setOpenFiles(prev => {
+                        if (!prev.includes(file)) {
+                          return [...prev, file];
+                        }
+                        return prev;
+                      });
+                    }
+                  }}
+                  className="tree-element cursor-pointer p-2 px-4 flex items-center gap-2 bg-slate-300 w-full hover:bg-slate-400">
+                  <p className='font-semibold text-lg'>{file}</p>
+                </button>
+              ))
+            ) : (
+              <div className="text-gray-500 p-4">No files found.</div>
+            )}
           </div>
-
         </div>
-
 
         <div className="code-editor flex flex-col flex-grow h-full shrink">
-
           <div className="top flex justify-between w-full">
-
             <div className="files flex">
-              {
-                openFiles.map((file, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentFile(file)}
-                    className={`open-file cursor-pointer p-2 px-4 flex items-center w-fit gap-2 bg-slate-300 ${currentFile === file ? 'bg-slate-400' : ''}`}>
-                    <p
-                      className='font-semibold text-lg'
-                    >{file}</p>
-                  </button>
-                ))
-              }
+              {openFiles.map((file, index) => (
+                <div
+                  key={index}
+                  onClick={() => setCurrentFile(file)}
+                  className={`open-file cursor-pointer p-2 px-4 flex items-center w-fit gap-2 bg-slate-300 ${currentFile === file ? 'bg-slate-400' : ''}`}
+                  style={{ userSelect: 'none' }}
+                >
+                  <p className='font-semibold text-lg'>{file}</p>
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenFiles(prev => prev.filter(f => f !== file));
+                      if (currentFile === file) {
+                        const remainingFiles = openFiles.filter(f => f !== file);
+                        setCurrentFile(remainingFiles[remainingFiles.length - 1] || null);
+                      }
+                    }}
+                    className="ml-2 text-red-500 hover:text-red-700 cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Close ${file}`}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.stopPropagation();
+                        setOpenFiles(prev => prev.filter(f => f !== file));
+                        if (currentFile === file) {
+                          const remainingFiles = openFiles.filter(f => f !== file);
+                          setCurrentFile(remainingFiles[remainingFiles.length - 1] || null);
+                        }
+                      }
+                    }}
+                  >
+                    ×
+                  </span>
+                </div>
+              ))}
             </div>
 
-            <div className="actions flex gap-2">
-              <button
-                onClick={async () => {
-                  if (webContainer) {
-                    await webContainer.mount(fileTree)
-                  } else {
-                    console.error("WebContainer is not initialized.");
-                  }
-
-
-                  const installProcess = await webContainer.spawn("npm", ["install"])
-
-
-
-                  installProcess.output.pipeTo(new WritableStream({
-                    write(chunk) {
-                      console.log(chunk)
-                    }
-                  }))
-
-                  if (runProcess) {
-                    runProcess.kill()
-                  }
-
-                  let tempRunProcess = await webContainer.spawn("npm", ["start"]);
-
-                  tempRunProcess.output.pipeTo(new WritableStream({
-                    write(chunk) {
-                      console.log(chunk)
-                    }
-                  }))
-
-                  setRunProcess(tempRunProcess)
-
-                  webContainer.on('server-ready', (port, url) => {
-                    console.log(port, url)
-                    setIframeUrl(url)
-                  })
-
-                }}
-                className='p-2 px-4 bg-slate-300 text-white'
-              >
-                run
-              </button>
-
-
-            </div>
+            
           </div>
+
           <div className="bottom flex flex-grow max-w-full shrink overflow-auto">
-            {
-              fileTree && currentFile && fileTree[currentFile] && fileTree[currentFile].file && typeof fileTree[currentFile].file.contents === 'string' ? (
-                <div className="code-editor-area h-full overflow-auto flex-grow bg-slate-50">
-                  <pre
-                    className="hljs h-full">
-                    <code
-                      className="hljs h-full outline-none"
-                      contentEditable
-                      suppressContentEditableWarning
-                      onBlur={(e) => {
-                        const updatedContent = e.target.innerText;
-                        const ft = {
-                          ...fileTree,
-                          [currentFile]: {
-                            file: {
-                              contents: updatedContent
-                            }
+            {fileTree && currentFile && fileTree[currentFile] && fileTree[currentFile].file && 
+             typeof fileTree[currentFile].file.contents === 'string' ? (
+              <div className="code-editor-area h-full overflow-auto flex-grow bg-slate-50">
+                <pre className="hljs h-full">
+                  <code
+                    className="hljs h-full outline-none"
+                    contentEditable
+                    suppressContentEditableWarning
+                    onBlur={(e) => {
+                      const updatedContent = e.target.innerText;
+                      const ft = {
+                        ...fileTree,
+                        [currentFile]: {
+                          file: {
+                            contents: updatedContent
                           }
                         }
-                        setFileTree(ft)
-                        saveFileTree(ft)
-                      }}
-                      dangerouslySetInnerHTML={{ __html: hljs.highlight('javascript', fileTree[currentFile].file.contents).value }}
-                      style={{
-                        whiteSpace: 'pre-wrap',
-                        paddingBottom: '25rem',
-                        counterSet: 'line-numbering',
-                      }}
-                    />
-                  </pre>
-                </div>
-              ) : (
-                <div className="text-gray-500 p-4">No file selected or file is empty.</div>
-              )
-            }
+                      }
+                      setFileTree(ft)
+                      saveFileTree(ft)
+                    }}
+                    dangerouslySetInnerHTML={{ 
+                      __html: window.hljs ? 
+                        window.hljs.highlight('javascript', fileTree[currentFile].file.contents).value :
+                        fileTree[currentFile].file.contents
+                    }}
+                    style={{
+                      whiteSpace: 'pre-wrap',
+                      paddingBottom: '25rem',
+                      counterSet: 'line-numbering',
+                    }}
+                  />
+                </pre>
+              </div>
+            ) : (
+              <div className="text-gray-500 p-4 flex items-center justify-center flex-grow">
+                {currentFile ? 'File is empty or invalid.' : 'No file selected.'}
+              </div>
+            )}
           </div>
-
         </div>
 
-        {iframeUrl && webContainer &&
-          (<div className="flex min-w-96 flex-col h-full">
+        {iframeUrl && webContainer && (
+          <div className="flex min-w-96 flex-col h-full">
             <div className="address-bar">
-              <input type="text"
+              <input 
+                type="text"
                 onChange={(e) => setIframeUrl(e.target.value)}
-                value={iframeUrl} className="w-full p-2 px-4 bg-slate-200" />
+                value={iframeUrl} 
+                className="w-full p-2 px-4 bg-slate-200" 
+              />
             </div>
             <iframe src={iframeUrl} className="w-full h-full"></iframe>
-          </div>)
-        }
-
-
+          </div>
+        )}
       </section>
 
-      {/* Animations (Tailwind CSS custom classes) */}
+    
       <style>{`
         .animate-fadeIn { animation: fadeIn 0.7s; }
         .animate-fadeInLeft { animation: fadeInLeft 0.7s; }
